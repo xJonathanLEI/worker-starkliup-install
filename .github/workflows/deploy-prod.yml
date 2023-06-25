@@ -1,0 +1,65 @@
+on:
+  push:
+    branches:
+      - "prod"
+
+name: "Deploy to production"
+
+jobs:
+  deploy:
+    name: "Deployment"
+    runs-on: "ubuntu-latest"
+
+    env:
+      WORKER_NAME: "starkliup-install"
+
+    steps:
+      - name: "Checkout source code"
+        uses: "actions/checkout@v3"
+
+      - name: "Use Rust cache"
+        uses: "Swatinem/rust-cache@v2"
+        with:
+          cache-on-failure: true
+
+      - name: "Install worker-build v0.0.9"
+        run: |
+          cargo install --locked --version 0.0.9 worker-build
+
+      - name: "Install wasm-pack v0.12.0"
+        run: |
+          cargo install --locked --version 0.12.0 wasm-pack
+
+      - name: "Install wasm-bindgen-cli v0.2.87"
+        run: |
+          cargo install --locked --version 0.2.87 wasm-bindgen-cli
+
+      - name: "Install wrangler v3.1.0"
+        run: |
+          yarn global add wrangler@3.1.0
+
+      - name: "Install binaryen v113"
+        run: |
+          curl -L "https://github.com/WebAssembly/binaryen/releases/download/version_113/binaryen-version_113-x86_64-linux.tar.gz" | \
+            tar -zxv -C $HOME
+          echo "$HOME/binaryen-version_113/bin" >> $GITHUB_PATH
+
+          # Bug introduced in worker-build 0.0.9?
+          ln -s /home/runner/binaryen-version_113/bin/ /home/runner/binaryen-version_113/bin/bin
+
+      - name: "Update wrangler.toml"
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          export ROUTES="get.starkli.sh/*"
+
+          sudo apt-get install -y gettext-base
+          envsubst < wrangler.toml > wrangler.toml.tmp
+          mv wrangler.toml.tmp wrangler.toml
+
+          sed -i 's/^name = "starkliup-install"$/name = "'"$WORKER_NAME"'"/g' wrangler.toml
+
+      - name: "Publish worker"
+        run: |
+          export CLOUDFLARE_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+
+          wrangler publish
