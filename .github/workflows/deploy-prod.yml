@@ -50,6 +50,7 @@ jobs:
       - name: "Update wrangler.toml"
         run: |
           export CLOUDFLARE_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          export CLOUDFLARE_KV_STORAGE_ID="${{ secrets.CLOUDFLARE_KV_STORAGE_ID }}"
           export ROUTES="get.starkli.sh/*"
 
           sudo apt-get install -y gettext-base
@@ -57,6 +58,12 @@ jobs:
           mv wrangler.toml.tmp wrangler.toml
 
           sed -i 's/^name = "starkliup-install"$/name = "'"$WORKER_NAME"'"/g' wrangler.toml
+
+      - name: "Set worker secrets"
+        run: |
+          export CLOUDFLARE_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+
+          printf "${{ secrets.ADMIN_TOKEN }}" | wrangler secret put ADMIN_TOKEN
 
       - name: "Publish worker"
         run: |

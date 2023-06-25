@@ -13,3 +13,7 @@ routes = [
 
 [build]
 command = "cargo install --version 0.0.9 worker-build && worker-build --release"
+
+[[kv_namespaces]]
+id = "${CLOUDFLARE_KV_STORAGE_ID}"
+binding = "STORAGE"
